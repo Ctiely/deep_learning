@@ -6,6 +6,7 @@
 #define DEEP_LEARNING_MATRIX_H
 
 #include <vector>
+#include <utility>
 
 namespace matrix {
     template <typename T>
@@ -269,9 +270,9 @@ namespace matrix {
 
         void print() const {
             printf("[");
-            for (int i = 0; i < nrow; ++i) {
+            for (size_t i = 0; i < nrow; ++i) {
                 printf("[");
-                for (int j = 0; j < ncol; ++j) {
+                for (size_t j = 0; j < ncol; ++j) {
                     if (j < ncol - 1) {
                         printf("%f,", _data[i][j]);
                     } else {
@@ -287,6 +288,40 @@ namespace matrix {
             printf("]\n");
         }
 
+        bool isEmpty() const {
+            return nrow == 0;
+        }
+
+        T max_element() const {
+            const Matrix<T> & self = *this;
+            T __max = self(0, 0);
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
+                    if (self(i, j) > __max) {
+                        __max = self(i, j);
+                    }
+                }
+            }
+            return __max;
+        }
+
+        std::pair<size_t, size_t> max_index() const {
+            assert(nrow > 0 && ncol > 0);
+            const Matrix<T> & self = *this;
+            T __max_element = self(0, 0);
+            std::pair<size_t, size_t> __max = std::make_pair(0, 0);
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
+                    if (self(i, j) > __max_element) {
+                        __max_element = self(i, j);
+                        __max.first = i;
+                        __max.second = j;
+                    }
+                }
+            }
+            return __max;
+        }
+
         size_t nrow;
         size_t ncol;
         std::vector<std::vector<T> > _data;
@@ -299,8 +334,8 @@ namespace matrix {
             initialize();
             auto m = std::min(data_.size(), nrow);
             auto n = std::min(data_.front().size(), ncol);
-            for (int i = 0; i < m; ++i) {
-                for (int j = 0; j < n; ++j) {
+            for (size_t i = 0; i < m; ++i) {
+                for (size_t j = 0; j < n; ++j) {
                     _data[i][j] = data_[i][j];
                 }
             }
