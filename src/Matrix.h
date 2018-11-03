@@ -8,18 +8,29 @@
 #include <vector>
 
 namespace matrix {
-    template <typename T, size_t M, size_t N>
+    template <typename T>
     class Matrix {
     public:
-        Matrix() {
+        Matrix(size_t nrow, size_t ncol)
+                : nrow(nrow), ncol(ncol) {
             initialize();
         }
 
-        explicit Matrix(const std::vector<T> & data_) {
+        template <typename __Generator>
+        Matrix(size_t nrow, size_t ncol, __Generator generator)
+                : nrow(nrow), ncol(ncol) {
             initialize();
-            for (int i = 0; i < M; ++i) {
-                for (int j = 0; j < N; ++j) {
-                    auto index = i * N + j;
+            for (int i = 0; i < _data.size(); ++i) {
+                std::generate(_data[i].begin(), _data[i].end(), generator);
+            }
+        }
+
+        Matrix(size_t nrow, size_t ncol, const std::vector<T> & data_)
+                : nrow(nrow), ncol(ncol) {
+            initialize();
+            for (int i = 0; i < nrow; ++i) {
+                for (int j = 0; j < ncol; ++j) {
+                    auto index = i * ncol + j;
                     if (index >= data_.size()) {
                         break;
                     }
@@ -28,41 +39,46 @@ namespace matrix {
             }
         }
 
-        explicit Matrix(const std::vector<std::vector<T> > & data_) {
+        Matrix(size_t nrow, size_t ncol, const std::vector<std::vector<T> > & data_)
+                : nrow(nrow), ncol(ncol) {
             _setData(data_);
         }
 
-        Matrix(const Matrix & other) {
-            *this = other;
+        Matrix(const Matrix<T> & other) {
+            nrow = other.nrow;
+            ncol = other.ncol;
+            _setData(other._data);
         }
 
         ~Matrix() = default;
 
         inline T operator()(size_t i, size_t j) const {
-            assert(i < M && j < N);
+            assert(i < nrow && j < ncol);
             return _data[i][j];
         }
 
         inline T &operator()(size_t i, size_t j) {
-            assert(i < M && j < N);
+            assert(i < nrow && j < ncol);
             return _data[i][j];
         }
 
-        Matrix<T, M, N> & operator=(const Matrix<T, M, N> & other) {
+        Matrix<T> & operator=(const Matrix<T> & other) {
             if (this != &other) {
+                nrow = other.nrow;
+                ncol = other.ncol;
                 _setData(other._data);
             }
             return *this;
         }
 
-        template<size_t P>
-        Matrix<T, M, P> dot(const Matrix<T, N, P> & other) const {
-            Matrix<T, M, P> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> dot(const Matrix<T> & other) const {
+            assert(ncol == other.nrow);
+            Matrix<T> res(nrow, other.ncol);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t k = 0; k < P; ++k) {
-                    for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t k = 0; k < other.ncol; ++k) {
+                    for (size_t j = 0; j < ncol; ++j) {
                         res(i, k) += self(i, j) * other(j, k);
                     }
                 }
@@ -70,24 +86,28 @@ namespace matrix {
             return res;
         }
 
-        Matrix<T, M, N> operator*(const Matrix<T, M, N> & other) const {
-            Matrix<T, M, N> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> operator*(const Matrix<T> & other) const {
+            assert(nrow == other.nrow);
+            assert(ncol == other.ncol);
+            Matrix<T> res(nrow, ncol);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     res(i, j) = self(i, j) * other(i, j);
                 }
             }
             return res;
         }
 
-        Matrix<T, M, N> operator/(const Matrix<T, M, N> & other) const {
-            Matrix<T, M, N> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> operator/(const Matrix<T> & other) const {
+            assert(nrow == other.nrow);
+            assert(ncol == other.ncol);
+            Matrix<T> res(nrow, ncol);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     assert(other(i, j) != 0);
                     res(i, j) = self(i, j) / other(i, j);
                 }
@@ -95,87 +115,99 @@ namespace matrix {
             return res;
         }
 
-        Matrix<T, M, N> operator+(const Matrix<T, M, N> & other) const {
-            Matrix<T, M, N> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> operator+(const Matrix<T> & other) const {
+            assert(nrow == other.nrow);
+            assert(ncol == other.ncol);
+            Matrix<T> res(nrow, ncol);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     res(i, j) = self(i, j) + other(i, j);
                 }
             }
             return res;
         }
 
-        Matrix<T, M, N> operator-(const Matrix<T, M, N> & other) const {
-            Matrix<T, M, N> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> operator-(const Matrix<T> & other) const {
+            assert(nrow == other.nrow);
+            assert(ncol == other.ncol);
+            Matrix<T> res(nrow, ncol);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     res(i, j) = self(i, j) - other(i, j);
                 }
             }
             return res;
         }
 
-        Matrix<T, M, N> operator-() const {
-            Matrix<T, M, N> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> operator-() const {
+            Matrix<T> res(nrow, ncol);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     res(i, j) = -self(i, j);
                 }
             }
             return res;
         }
 
-        void operator+=(const Matrix<T, M, N> & other) {
+        void operator+=(const Matrix<T> & other) {
+            assert(nrow == other.nrow);
+            assert(ncol == other.ncol);
             *this = *this + other;
         }
 
-        void operator-=(const Matrix<T, M, N> & other) {
+        void operator-=(const Matrix<T> & other) {
+            assert(nrow == other.nrow);
+            assert(ncol == other.ncol);
             *this = *this - other;
         }
 
-        void operator*=(const Matrix<T, M, N> & other) {
+        void operator*=(const Matrix<T> & other) {
+            assert(nrow == other.nrow);
+            assert(ncol == other.ncol);
             *this = *this * other;
         }
 
-        void operator/=(const Matrix<T, M, N> & other) {
+        void operator/=(const Matrix<T> & other) {
+            assert(nrow == other.nrow);
+            assert(ncol == other.ncol);
             *this = *this / other;
         }
 
-        Matrix<T, M, N> operator*(T scalar) const {
-            Matrix<T, M, N> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> operator*(T scalar) const {
+            Matrix<T> res(nrow, ncol);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     res(i, j) = self(i, j) * scalar;
                 }
             }
             return res;
         }
 
-        inline Matrix<T, M, N> operator/(T scalar) const {
+        inline Matrix<T> operator/(T scalar) const {
             return *this * (1.0 / scalar);
         }
 
-        Matrix<T, M, N> operator+(T scalar) const {
-            Matrix<T, M, N> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> operator+(T scalar) const {
+            Matrix<T> res(nrow, ncol);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     res(i, j) = self(i, j) + scalar;
                 }
             }
             return res;
         }
 
-        inline Matrix<T, M, N> operator-(T scalar) const {
+        inline Matrix<T> operator-(T scalar) const {
             return *this + (-1 * scalar);
         }
 
@@ -196,13 +228,17 @@ namespace matrix {
             *this = *this - scalar;
         }
 
-        bool operator==(const Matrix<T, M, N> &other) const {
-            const Matrix<T, M, N> &self = *this;
+        bool operator==(const Matrix<T> & other) const {
+            if (nrow != other.nrow || ncol != other.ncol) {
+                return false;
+            }
+
+            const Matrix<T> & self = *this;
 
             static constexpr float eps = 1e-10f;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     if (T(self(i, j) - other(i, j)) > eps) {
                         return false;
                     }
@@ -211,38 +247,38 @@ namespace matrix {
             return true;
         }
 
-        bool operator!=(const Matrix<T, M, N> & other) const {
+        bool operator!=(const Matrix<T> & other) const {
             return !(*this == other);
         }
 
-        Matrix<T, N, M> transpose() const {
-            Matrix<T, N, M> res;
-            const Matrix<T, M, N> & self = *this;
+        Matrix<T> transpose() const {
+            Matrix<T> res(ncol, nrow);
+            const Matrix<T> & self = *this;
 
-            for (size_t i = 0; i < M; ++i) {
-                for (size_t j = 0; j < N; ++j) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
                     res(j, i) = self(i, j);
                 }
             }
             return res;
         }
 
-        inline Matrix<T, N, M> t() const {
+        inline Matrix<T> t() const {
             return transpose();
         }
 
         void print() const {
             printf("[");
-            for (int i = 0; i < M; ++i) {
+            for (int i = 0; i < nrow; ++i) {
                 printf("[");
-                for (int j = 0; j < N; ++j) {
-                    if (j < N - 1) {
+                for (int j = 0; j < ncol; ++j) {
+                    if (j < ncol - 1) {
                         printf("%f,", _data[i][j]);
                     } else {
                         printf("%f", _data[i][j]);
                     }
                 }
-                if (i < M - 1) {
+                if (i < nrow - 1) {
                     printf("],\n");
                 } else {
                     printf("]");
@@ -251,17 +287,18 @@ namespace matrix {
             printf("]\n");
         }
 
-        void initialize() {
-            _data = std::vector<std::vector<T> >(M, std::vector<T>(N, T()));
-        }
-
-    private:
+        size_t nrow;
+        size_t ncol;
         std::vector<std::vector<T> > _data;
+    private:
+        void initialize() {
+            _data = std::vector<std::vector<T> >(nrow, std::vector<T>(ncol, T()));
+        }
 
         void _setData(const std::vector<std::vector<T> > & data_) {
             initialize();
-            auto m = std::min(data_.size(), M);
-            auto n = std::min(data_.front().size(), N);
+            auto m = std::min(data_.size(), nrow);
+            auto n = std::min(data_.front().size(), ncol);
             for (int i = 0; i < m; ++i) {
                 for (int j = 0; j < n; ++j) {
                     _data[i][j] = data_[i][j];
@@ -269,7 +306,6 @@ namespace matrix {
             }
         }
     };
-
 }
 
 #endif //DEEP_LEARNING_MATRIX_H
