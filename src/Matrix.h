@@ -5,267 +5,176 @@
 #ifndef DEEP_LEARNING_MATRIX_H
 #define DEEP_LEARNING_MATRIX_H
 
-#include <vector>
 #include <utility>
+#include <Eigen/Eigen>
 
 namespace matrix {
     template <typename T>
     class Matrix {
     public:
-        Matrix(size_t nrow, size_t ncol)
-                : nrow(nrow), ncol(ncol) {
-            initialize();
-        }
-
-        template <typename __Generator>
-        Matrix(size_t nrow, size_t ncol, __Generator generator)
-                : nrow(nrow), ncol(ncol) {
-            initialize();
-            for (int i = 0; i < _data.size(); ++i) {
-                std::generate(_data[i].begin(), _data[i].end(), generator);
-            }
-        }
-
-        Matrix(size_t nrow, size_t ncol, const std::vector<T> & data_)
-                : nrow(nrow), ncol(ncol) {
-            initialize();
-            for (int i = 0; i < nrow; ++i) {
-                for (int j = 0; j < ncol; ++j) {
-                    auto index = i * ncol + j;
-                    if (index >= data_.size()) {
-                        break;
-                    }
-                    _data[i][j] = data_[index];
+        Matrix(size_t nrow, size_t ncol) : nrow(nrow), ncol(ncol), __data(nrow, ncol) {
+            __data.setZero();
+        };
+        explicit Matrix(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> & data_)
+                : nrow((size_t)data_.rows()), ncol((size_t)data_.cols()), __data(std::move(data_)) {}
+        explicit Matrix(std::vector<std::vector<T> > & data_)
+                : nrow(data_.size()), ncol(data_.front().size()), __data(nrow, ncol) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
+                    __data(i, j) = data_[i][j];
                 }
             }
         }
-
-        Matrix(size_t nrow, size_t ncol, const std::vector<std::vector<T> > & data_)
-                : nrow(nrow), ncol(ncol) {
-            _setData(data_);
+        template <typename __Generator>
+        Matrix(size_t nrow, size_t ncol, __Generator generator)
+                : nrow(nrow), ncol(ncol), __data(nrow, ncol) {
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
+                    __data(i, j) = generator();
+                }
+            }
         }
-
-        Matrix(const Matrix<T> & other) {
-            nrow = other.nrow;
-            ncol = other.ncol;
-            _setData(other._data);
+        explicit Matrix(std::vector<T> & data_, bool rowVec=true) {
+            if (rowVec) {
+                nrow = 1;
+                ncol = data_.size();
+            } else {
+                nrow = data_.size();
+                ncol = 1;
+            }
+            __data.resize(nrow, ncol);
+            for (size_t i = 0; i < nrow; ++i) {
+                for (size_t j = 0; j < ncol; ++j) {
+                    __data(i, j) = data_[i + j];
+                }
+            }
         }
-
         ~Matrix() = default;
 
         inline T operator()(size_t i, size_t j) const {
-            assert(i < nrow && j < ncol);
-            return _data[i][j];
+            return __data(i, j);
         }
 
         inline T &operator()(size_t i, size_t j) {
-            assert(i < nrow && j < ncol);
-            return _data[i][j];
+            return __data(i, j);
+        }
+
+        inline Matrix<T> operator()(size_t i) const {
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> row = __data.row(i);
+            return Matrix<T>(row);
         }
 
         Matrix<T> & operator=(const Matrix<T> & other) {
             if (this != &other) {
                 nrow = other.nrow;
                 ncol = other.ncol;
-                _setData(other._data);
+                __data = other.__data;
             }
             return *this;
         }
 
         Matrix<T> dot(const Matrix<T> & other) const {
-            assert(ncol == other.nrow);
-            Matrix<T> res(nrow, other.ncol);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t k = 0; k < other.ncol; ++k) {
-                    for (size_t j = 0; j < ncol; ++j) {
-                        res(i, k) += self(i, j) * other(j, k);
-                    }
-                }
-            }
-            return res;
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dot = __data * other.__data;
+            return Matrix<T>(dot);
         }
 
         Matrix<T> operator*(const Matrix<T> & other) const {
-            assert(nrow == other.nrow);
-            assert(ncol == other.ncol);
-            Matrix<T> res(nrow, ncol);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    res(i, j) = self(i, j) * other(i, j);
-                }
-            }
-            return res;
-        }
-
-        Matrix<T> operator/(const Matrix<T> & other) const {
-            assert(nrow == other.nrow);
-            assert(ncol == other.ncol);
-            Matrix<T> res(nrow, ncol);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    assert(other(i, j) != 0);
-                    res(i, j) = self(i, j) / other(i, j);
-                }
-            }
-            return res;
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> product = __data.cwiseProduct(other.__data);
+            return Matrix<T>(product);
         }
 
         Matrix<T> operator+(const Matrix<T> & other) const {
-            assert(nrow == other.nrow);
-            assert(ncol == other.ncol);
-            Matrix<T> res(nrow, ncol);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    res(i, j) = self(i, j) + other(i, j);
-                }
-            }
-            return res;
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> add = __data + other.__data;
+            return Matrix<T>(add);
         }
 
         Matrix<T> operator-(const Matrix<T> & other) const {
-            assert(nrow == other.nrow);
-            assert(ncol == other.ncol);
-            Matrix<T> res(nrow, ncol);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    res(i, j) = self(i, j) - other(i, j);
-                }
-            }
-            return res;
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> sub = __data - other.__data;
+            return Matrix<T>(sub);
         }
 
         Matrix<T> operator-() const {
-            Matrix<T> res(nrow, ncol);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    res(i, j) = -self(i, j);
-                }
-            }
-            return res;
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> negative = -__data;
+            return Matrix<T>(negative);
         }
 
         void operator+=(const Matrix<T> & other) {
-            assert(nrow == other.nrow);
-            assert(ncol == other.ncol);
-            *this = *this + other;
+            __data += other.__data;
         }
 
         void operator-=(const Matrix<T> & other) {
-            assert(nrow == other.nrow);
-            assert(ncol == other.ncol);
-            *this = *this - other;
+            __data -= other.__data;
         }
 
         void operator*=(const Matrix<T> & other) {
-            assert(nrow == other.nrow);
-            assert(ncol == other.ncol);
-            *this = *this * other;
-        }
-
-        void operator/=(const Matrix<T> & other) {
-            assert(nrow == other.nrow);
-            assert(ncol == other.ncol);
-            *this = *this / other;
+            __data = __data.cwiseProduct(other.__data);
         }
 
         Matrix<T> operator*(T scalar) const {
-            Matrix<T> res(nrow, ncol);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    res(i, j) = self(i, j) * scalar;
-                }
-            }
-            return res;
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> multiply = __data * scalar;
+            return Matrix<T>(multiply);
         }
 
         inline Matrix<T> operator/(T scalar) const {
-            return *this * (1.0 / scalar);
-        }
-
-        Matrix<T> operator+(T scalar) const {
-            Matrix<T> res(nrow, ncol);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    res(i, j) = self(i, j) + scalar;
-                }
-            }
-            return res;
-        }
-
-        inline Matrix<T> operator-(T scalar) const {
-            return *this + (-1 * scalar);
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> divide = __data / scalar;
+            return Matrix<T>(divide);
         }
 
         void operator*=(T scalar) {
-            *this = *this * scalar;
+            __data *= scalar;
         }
 
         void operator/=(T scalar) {
-            assert(scalar != 0);
-            *this = *this * (1.0 / scalar);
-        }
-
-        inline void operator+=(T scalar) {
-            *this = *this + scalar;
-        }
-
-        inline void operator-=(T scalar) {
-            *this = *this - scalar;
-        }
-
-        bool operator==(const Matrix<T> & other) const {
-            if (nrow != other.nrow || ncol != other.ncol) {
-                return false;
-            }
-
-            const Matrix<T> & self = *this;
-
-            static constexpr float eps = 1e-10f;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    if (T(self(i, j) - other(i, j)) > eps) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-
-        bool operator!=(const Matrix<T> & other) const {
-            return !(*this == other);
+            __data /= scalar;
         }
 
         Matrix<T> transpose() const {
-            Matrix<T> res(ncol, nrow);
-            const Matrix<T> & self = *this;
-
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    res(j, i) = self(i, j);
-                }
-            }
-            return res;
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> t = __data.transpose();
+            return Matrix<T>(t);
         }
 
         inline Matrix<T> t() const {
             return transpose();
+        }
+
+        bool isEmpty() const {
+            return __data.size() == 0;
+        }
+
+        void setRandom() {
+            __data.setRandom();
+        }
+
+        void setZero() {
+            __data.setZero();
+        }
+
+        void setOnes() {
+            __data.setOnes();
+        }
+
+        void resize(size_t rows, size_t cols) {
+            nrow = rows;
+            ncol = cols;
+            __data.resize(rows, cols);
+        }
+
+        T max_element() {
+            return __data.maxCoeff();
+        }
+
+        std::pair<size_t, size_t> max_index() {
+            size_t i, j;
+            __data.maxCoeff(&i, &j);
+            return std::make_pair(i, j);
+        }
+
+        bool operator==(const Matrix<T> & other) const {
+            return __data == other.__data;
+        }
+
+        bool operator!=(const Matrix<T> & other) const {
+            return !(*this == other);
         }
 
         void print() const {
@@ -274,9 +183,9 @@ namespace matrix {
                 printf("[");
                 for (size_t j = 0; j < ncol; ++j) {
                     if (j < ncol - 1) {
-                        printf("%f,", _data[i][j]);
+                        printf("%f,", __data(i, j));
                     } else {
-                        printf("%f", _data[i][j]);
+                        printf("%f", __data(i, j));
                     }
                 }
                 if (i < nrow - 1) {
@@ -288,58 +197,9 @@ namespace matrix {
             printf("]\n");
         }
 
-        bool isEmpty() const {
-            return nrow == 0;
-        }
-
-        T max_element() const {
-            const Matrix<T> & self = *this;
-            T __max = self(0, 0);
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    if (self(i, j) > __max) {
-                        __max = self(i, j);
-                    }
-                }
-            }
-            return __max;
-        }
-
-        std::pair<size_t, size_t> max_index() const {
-            assert(nrow > 0 && ncol > 0);
-            const Matrix<T> & self = *this;
-            T __max_element = self(0, 0);
-            std::pair<size_t, size_t> __max = std::make_pair(0, 0);
-            for (size_t i = 0; i < nrow; ++i) {
-                for (size_t j = 0; j < ncol; ++j) {
-                    if (self(i, j) > __max_element) {
-                        __max_element = self(i, j);
-                        __max.first = i;
-                        __max.second = j;
-                    }
-                }
-            }
-            return __max;
-        }
-
-        size_t nrow;
-        size_t ncol;
-        std::vector<std::vector<T> > _data;
+        size_t nrow, ncol;
     private:
-        void initialize() {
-            _data = std::vector<std::vector<T> >(nrow, std::vector<T>(ncol, T()));
-        }
-
-        void _setData(const std::vector<std::vector<T> > & data_) {
-            initialize();
-            auto m = std::min(data_.size(), nrow);
-            auto n = std::min(data_.front().size(), ncol);
-            for (size_t i = 0; i < m; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    _data[i][j] = data_[i][j];
-                }
-            }
-        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> __data;
     };
 }
 
