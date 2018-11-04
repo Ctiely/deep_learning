@@ -17,7 +17,6 @@ void test_eigen() {
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> matrix2(10, 10);
     matrix1.setRandom();
     cout << matrix1(0, 0) << endl;
-    matrix1 *= 2;
     cout << matrix2(0, 0) << endl;
     matrix2(0, 0) = 0;
     cout << matrix1(0, 0) << endl;
