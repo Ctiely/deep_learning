@@ -18,12 +18,7 @@ public:
               weights_(n_neurons, last_n_neurons),
               bias_(n_neurons, 1),
               outputs_(0, 0),
-              grads_(0, 0) {
-        if (last_n_neurons) {
-            weights_.setRandom();
-            bias_.setRandom();
-        }
-    }
+              grads_(0, 0) {}
 
     template <typename __Gen>
     DenseLayer(size_t last_n_neurons,

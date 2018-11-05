@@ -45,12 +45,17 @@ void test_constructor() {
 }
 
 void test_index() {
-    matrix::Matrix<float> matrix1(0, 0);
-    matrix1.resize(5, 5);
-    matrix1.setRandom();
+    std::random_device rd;
+    std::mt19937 rg(rd());
+    std::normal_distribution<float> normDist(0, 0.1);
+    auto genNormRand = [&]() { return normDist(rg); };
+
+    matrix::Matrix<float> matrix1(5, 3, genNormRand);
     matrix1.print();
     cout << matrix1(1, 1) << " " << matrix1(0, 2) << endl;
-    matrix1(0).print();
+    matrix1(1).print();
+    cout << matrix1.max_element() << endl;
+    cout << matrix1.max_index().first << " " << matrix1.max_index().second << endl;
 }
 
 void test_operator() {
@@ -102,9 +107,13 @@ void test_operator() {
 }
 
 void test_random_initialize() {
-    matrix::Matrix<float> matrix1(5, 4), matrix2(5, 4);
-    matrix1.setRandom();
-    matrix2.setRandom();
+    std::random_device rd;
+    std::mt19937 rg(rd());
+    std::normal_distribution<float> normDist(0, 0.1);
+    auto genNormRand = [&]() { return normDist(rg); };
+
+    matrix::Matrix<float> matrix1(5, 4, genNormRand), matrix2(5, 4, genNormRand);
+
     matrix1.print();
     matrix2.print();
 }
@@ -151,6 +160,7 @@ void test_load_data() {
     cout << x_train.nrow << " " << x_train.ncol << endl;
     //x_train.print();
     y_train.print();
+    y_train.t().print();
     //x_test.print();
 }
 
@@ -170,7 +180,7 @@ void test_dnn() {
 
     size_t fc1In = 28;
     size_t fc2In = 10;
-    size_t maxIter = 20;
+    size_t maxIter = 4;
     float lr = 0.05;
     size_t nBatchSize = 64;
 
@@ -212,7 +222,7 @@ void test_dnn() {
 
                 matrix::Matrix<float> loss_grads_ = loss.grad_();
 
-                matrix::Matrix<float> fc2_active_grads_(fc2In, 1);
+                matrix::Matrix<float> fc2_active_grads_(fc2In, 1, false);
                 fc2_active_grads_.setOnes();
                 fc2.Backward(loss_weights_, loss_grads_, fc2_active_grads_);
                 matrix::Matrix<float> act_grads = act.grad_();

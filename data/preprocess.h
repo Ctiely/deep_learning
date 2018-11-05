@@ -10,13 +10,13 @@
 #include <iostream>
 
 
-template<typename _IS>
+template<typename _IS, typename T>
 void LoadData(_IS &inStream,
               size_t & pImgRows,
               size_t & pImgCols,
-              std::vector<std::vector<float> > & trainImages,
-              std::vector<float> & trainLabels,
-              std::vector<std::vector<float>> & testImages) {
+              std::vector<std::vector<T> > & trainImages,
+              std::vector<T> & trainLabels,
+              std::vector<std::vector<T>> & testImages) {
     size_t nTrainCnt, nTestCnt;
     inStream >> nTrainCnt >> nTestCnt >> pImgRows >> pImgCols;
     size_t nImgArea = pImgRows * pImgCols, n = 41;
@@ -26,7 +26,7 @@ void LoadData(_IS &inStream,
     for (size_t i = 0; i < nTrainCnt + nTestCnt; ++i) {
         std::string strLine;
         inStream >> strLine;
-        std::vector<float> fltBuf(nImgArea);
+        std::vector<T> fltBuf(nImgArea);
         for (size_t j = 0; j < nImgArea / 2; ++j) {
             const char *p = strLine.c_str() + j * 3;
             size_t rawCode = (uint16_t) (p[0] - '0') * n * n;
