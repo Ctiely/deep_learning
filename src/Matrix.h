@@ -5,6 +5,7 @@
 #ifndef DEEP_LEARNING_MATRIX_H
 #define DEEP_LEARNING_MATRIX_H
 
+#include <vector>
 #include <cstdio>
 #include <utility>
 
@@ -13,28 +14,26 @@ namespace matrix {
     class Matrix {
     public:
         Matrix(size_t nrow, size_t ncol, bool initialize=true) : nrow(nrow), ncol(ncol), size(nrow * ncol) {
-            //__data = new T[size];
+            __data = new T[size];
             if (initialize) {
                 setZero();
             }
         }
         explicit Matrix(std::vector<std::vector<T> > & data_)
                 : nrow(data_.size()), ncol(data_.front().size()), size(nrow * ncol) {
-            //__data = new T[size];
+            __data = new T[size];
             for (size_t i = 0; i < nrow; ++i) {
                 for (size_t j = 0; j < ncol; ++j) {
-                    //__data[j + i * ncol] = data_[i][j];
-                    __data.push_back(data_[i][j]);
+                    __data[j + i * ncol] = data_[i][j];
                 }
             }
         }
         template <typename __Generator>
         Matrix(size_t nrow, size_t ncol, __Generator generator)
                 : nrow(nrow), ncol(ncol), size(nrow * ncol) {
-            //__data = new T[size];
+            __data = new T[size];
             for (size_t i = 0; i < size; ++i) {
-                //__data[i] = generator();
-                __data.push_back(generator());
+                __data[i] = generator();
             }
         }
         explicit Matrix(std::vector<T> & data_, bool rowVec=true)
@@ -46,10 +45,9 @@ namespace matrix {
                 nrow = size;
                 ncol = 1;
             }
-            //__data = new T[size];
+            __data = new T[size];
             for (size_t i = 0; i < size; ++i) {
-                //__data[i] = data_[i];
-                __data.push_back(data_[i]);
+                __data[i] = data_[i];
             }
         }
 
@@ -64,8 +62,7 @@ namespace matrix {
         inline Matrix<T> operator()(size_t i) const {
             Matrix<T> row(1, ncol, false);
             for (size_t j = 0; j < ncol; ++j) {
-                //row.__data[j] = __data[i * ncol + j];
-                row.__data.push_back(__data[i * ncol + j]);
+                row.__data[j] = __data[i * ncol + j];
             }
             return row;
         }
@@ -75,9 +72,10 @@ namespace matrix {
                 nrow = other.nrow;
                 ncol = other.ncol;
                 size = nrow * ncol;
-                //__data = new T[size];
-                //memcpy(__data, other.__data, sizeof(__data));
-                __data = other.__data;
+                __data = new T[size];
+                for (size_t i = 0; i < size; ++i) {
+                    __data[i] = other.__data[i];
+                }
             }
             return *this;
         }
@@ -89,7 +87,7 @@ namespace matrix {
 
             for (size_t i = 0; i < nrow; ++i) {
                 for (size_t k = 0; k < other.ncol; ++k) {
-                    res.__data.push_back(0);
+                    res(i, k) = 0;
                     for (size_t j = 0; j < ncol; ++j) {
                         res(i, k) += self(i, j) * other(j, k);
                     }
@@ -103,8 +101,7 @@ namespace matrix {
             Matrix<T> res(nrow, ncol, false);
 
             for (size_t i = 0; i < size; ++i) {
-                //res.__data[i] = __data[i] * other.__data[i];
-                res.__data.push_back(__data[i] * other.__data[i]);
+                res.__data[i] = __data[i] * other.__data[i];
             }
             return res;
         }
@@ -114,8 +111,7 @@ namespace matrix {
             Matrix<T> res(nrow, ncol, false);
 
             for (size_t i = 0; i < size; ++i) {
-                //res.__data[i] = __data[i] + other.__data[i];
-                res.__data.push_back(__data[i] + other.__data[i]);
+                res.__data[i] = __data[i] + other.__data[i];
             }
             return res;
         }
@@ -125,8 +121,7 @@ namespace matrix {
             Matrix<T> res(nrow, ncol, false);
 
             for (size_t i = 0; i < size; ++i) {
-                //res.__data[i] = __data[i] - other.__data[i];
-                res.__data.push_back(__data[i] - other.__data[i]);
+                res.__data[i] = __data[i] - other.__data[i];
             }
             return res;
         }
@@ -135,8 +130,7 @@ namespace matrix {
             Matrix<T> res(nrow, ncol, false);
 
             for (size_t i = 0; i < size; ++i) {
-                //res.__data[i] = -__data[i];
-                res.__data.push_back(-__data[i]);
+                res.__data[i] = -__data[i];
             }
             return res;
         }
@@ -166,8 +160,7 @@ namespace matrix {
             Matrix<T> res(nrow, ncol, false);
 
             for (size_t i = 0; i < size; ++i) {
-                //res.__data[i] = __data[i] * scalar;
-                res.__data.push_back(__data[i] * scalar);
+                res.__data[i] = __data[i] * scalar;
             }
             return res;
         }
@@ -177,8 +170,7 @@ namespace matrix {
             Matrix<T> res(nrow, ncol, false);
 
             for (size_t i = 0; i < size; ++i) {
-                //res.__data[i] = __data[i] / scalar;
-                res.__data.push_back(__data[i] / scalar);
+                res.__data[i] = __data[i] / scalar;
             }
             return res;
         }
@@ -197,7 +189,7 @@ namespace matrix {
         }
 
         Matrix<T> transpose() const {
-            Matrix<T> res(ncol, nrow);
+            Matrix<T> res(ncol, nrow, false);
             const Matrix<T> & self = *this;
 
             for (size_t i = 0; i < nrow; ++i) {
@@ -217,17 +209,15 @@ namespace matrix {
         }
 
         inline void setZero() {
-            std::vector<T>(size).swap(__data);
-            //for (size_t i = 0; i < size; ++i) {
-            //    __data[i] = 0;
-            //}
+            for (size_t i = 0; i < size; ++i) {
+                __data[i] = 0;
+            }
         }
 
         inline void setOnes() {
-            std::vector<T>(size, 1).swap(__data);
-            //for (size_t i = 0; i < size; ++i) {
-            //    __data[i] = 1;
-            //}
+            for (size_t i = 0; i < size; ++i) {
+                __data[i] = 1;
+            }
         }
 
         T max_element() {
@@ -276,8 +266,7 @@ namespace matrix {
 
         size_t nrow, ncol, size;
     private:
-        //T* __data;
-        std::vector<T> __data;
+        T* __data;
     };
 }
 
