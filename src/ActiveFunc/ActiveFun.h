@@ -30,6 +30,7 @@ public:
             for (size_t j = 0; j < inputs_.ncol; ++j) {
                 if (inputs_(i, j) < -MAX_EXP) {
                     outputs_(i, j) = 0;
+                    __grads(i, j) = 0;
                 } else {
                     auto fExp = std::exp(-inputs_(i, j));
                     auto fTmp = 1.0 + fExp;
@@ -62,6 +63,7 @@ public:
             for (size_t j = 0; j < inputs_.ncol; ++j) {
                 if (inputs_(i, j) < -(MAX_EXP / 2.0)) {
                     outputs_(i, j) = 0;
+                    __grads(i, j) = 0;
                 } else {
                     auto fExp = std::exp(-2.0 * inputs_(i, j));
                     auto fTmp = 1.0f + fExp;
@@ -94,6 +96,7 @@ public:
             for (size_t j = 0; j < inputs_.ncol; ++j) {
                 if (inputs_(i, j) <= 0) {
                     outputs_(i, j) = 0;
+                    __grads(i, j) = 0;
                 } else {
                     outputs_(i, j) = inputs_(i, j);
                     __grads(i, j) = 1;
